@@ -1,9 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 
 import '../models/recipe.dart';
 
-/// Abstraction over "where recipes come from" so screens never talk to
-/// Firestore (or any backend) directly.
+/// Abstraction over "where recipes come from" so screens never talk to the
+/// API (or any backend) directly.
 abstract class RecipeRepository {
   Stream<List<Recipe>> watchFeaturedRecipes();
   Stream<List<Recipe>> watchAllRecipes();
@@ -11,58 +13,89 @@ abstract class RecipeRepository {
   Future<void> addRecipe(Recipe recipe);
 }
 
-/// Firestore-backed implementation.
+/// Laravel-API-backed implementation, talking to the endpoints in
+/// `routes/api.php` of the companion `recipe_box_api` project.
 ///
-/// Expects a top-level `recipes` collection where each document matches
-/// [Recipe.toMap]. "Featured" is currently just the most recently created
-/// recipes — swap the query for a `featured: true` flag once curation is
-/// needed.
-class FirestoreRecipeRepository implements RecipeRepository {
-  FirestoreRecipeRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+/// There's no real-time listener over HTTP the way Firestore has
+/// `.snapshots()`, so `watchFeaturedRecipes()`/`watchAllRecipes()` fetch
+/// once per subscription (`Stream.fromFuture`) rather than push live
+/// updates. Screens already re-subscribe on rebuild (e.g. after a
+/// favorite toggle), so lists stay reasonably fresh without extra
+/// plumbing — pull-to-refresh on Home covers the rest.
+class ApiRecipeRepository implements RecipeRepository {
+  ApiRecipeRepository({required this.baseUrl, http.Client? client})
+      : _client = client ?? http.Client();
 
-  final FirebaseFirestore _firestore;
+  final String baseUrl;
+  final http.Client _client;
 
-  CollectionReference<Map<String, dynamic>> get _recipes =>
-      _firestore.collection('recipes');
-
-  @override
-  Stream<List<Recipe>> watchFeaturedRecipes() {
-    return _recipes
-        .orderBy('createdAt', descending: true)
-        .limit(10)
-        .snapshots()
-        .map(_snapshotToRecipes);
-  }
+  Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
   @override
-  Stream<List<Recipe>> watchAllRecipes() {
-    return _recipes
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(_snapshotToRecipes);
-  }
+  Stream<List<Recipe>> watchFeaturedRecipes() =>
+      Stream.fromFuture(_fetchList('/api/recipes/featured'));
+
+  @override
+  Stream<List<Recipe>> watchAllRecipes() =>
+      Stream.fromFuture(_fetchList('/api/recipes'));
 
   @override
   Future<Recipe?> getRecipeById(String id) async {
-    final doc = await _recipes.doc(id).get();
-    if (!doc.exists) return null;
-    return Recipe.fromMap(doc.id, doc.data()!);
+    final response = await _client.get(
+      _uri('/api/recipes/$id'),
+      headers: const {'Accept': 'application/json'},
+    );
+
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load recipe (${response.statusCode})');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>;
+    return Recipe.fromMap(data['id'] as String, data);
   }
 
   @override
   Future<void> addRecipe(Recipe recipe) async {
-    await _recipes.add(recipe.toMap());
+    final response = await _client.post(
+      _uri('/api/recipes'),
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(recipe.toMap()),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to save recipe (${response.statusCode})');
+    }
   }
 
-  List<Recipe> _snapshotToRecipes(QuerySnapshot<Map<String, dynamic>> snap) {
-    return snap.docs.map((d) => Recipe.fromMap(d.id, d.data())).toList();
+  Future<List<Recipe>> _fetchList(String path) async {
+    final response = await _client.get(
+      _uri(path),
+      headers: const {'Accept': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load recipes (${response.statusCode})');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = body['data'] as List<dynamic>;
+    return data
+        .map((e) => Recipe.fromMap(
+              (e as Map<String, dynamic>)['id'] as String,
+              e,
+            ))
+        .toList();
   }
 }
 
-/// In-memory implementation used until a Firebase project is connected
-/// (or for widget tests/design review). Swapped in automatically by
-/// `main.dart` when Firebase fails to initialize.
+/// In-memory implementation for offline UI work or design review — no
+/// network required. Useful if you want to preview screens without the
+/// Laravel API running.
 class MockRecipeRepository implements RecipeRepository {
   final List<Recipe> _recipes = _sampleRecipes();
 

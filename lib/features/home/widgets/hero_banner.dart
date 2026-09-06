@@ -34,8 +34,8 @@ class HeroBanner extends StatelessWidget {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    AppColors.darkGreen.withValues(alpha: 0.78),
-                    AppColors.darkGreen.withValues(alpha: 0.05),
+                    AppColors.darkGreen.withOpacity(0.78),
+                    AppColors.darkGreen.withOpacity(0.05),
                   ],
                 ),
               ),
@@ -59,7 +59,7 @@ class HeroBanner extends StatelessWidget {
                 Text(
                   'Simple ingredients, delicious results.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.white.withValues(alpha: 0.9),
+                        color: AppColors.white.withOpacity(0.9),
                       ),
                 ),
                 const SizedBox(height: 16),

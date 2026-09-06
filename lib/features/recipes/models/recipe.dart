@@ -26,7 +26,7 @@ enum RecipeDifficulty {
 /// Core content model for Recipe Box.
 ///
 /// Times are stored in minutes (not [Duration]) because that's the natural
-/// representation coming from/going to Firestore; [prepTime]/[cookTime]/
+/// representation coming from/going to the API; [prepTime]/[cookTime]/
 /// [totalTime] expose them as [Duration] for convenient use in the UI.
 class Recipe {
   final String id;

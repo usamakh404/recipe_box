@@ -209,7 +209,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                       child: _LabeledField(
                         label: 'Difficulty',
                         child: DropdownButtonFormField<RecipeDifficulty>(
-                          initialValue: _difficulty,
+                          value: _difficulty,
                           decoration: const InputDecoration(),
                           items: RecipeDifficulty.values
                               .map((d) => DropdownMenuItem(value: d, child: Text(d.label)))
@@ -283,7 +283,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     setState(() => _isSaving = true);
     final now = DateTime.now();
     final recipe = Recipe(
-      id: '', // assigned by the repository (Firestore doc id)
+      id: '', // assigned by the API (auto-increment id from MySQL)
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       imageUrl: _imageUrlController.text.trim(),

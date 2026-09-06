@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Tracks which recipe ids are favorited.
 ///
 /// Persisted locally via [SharedPreferences] for now. When accounts/sync
-/// are added, this is the seam to swap in a Firestore-backed store without
+/// are added, this is the seam to swap in an API-backed store without
 /// touching any UI code — screens only ever call [isFavorite]/[toggle].
 class FavoritesProvider extends ChangeNotifier {
   static const _prefsKey = 'favorite_recipe_ids';

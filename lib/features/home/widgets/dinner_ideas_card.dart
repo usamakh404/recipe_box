@@ -34,7 +34,7 @@ class DinnerIdeasCard extends StatelessWidget {
                     Text(
                       'Get recipe ideas based on what you have on hand.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.white.withValues(alpha: 0.85),
+                            color: AppColors.white.withOpacity(0.85),
                           ),
                     ),
                   ],

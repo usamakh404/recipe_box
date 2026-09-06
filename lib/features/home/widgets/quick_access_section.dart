@@ -20,7 +20,7 @@ class QuickAccessSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 128,
+      height: 108,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
